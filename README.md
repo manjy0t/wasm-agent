@@ -132,8 +132,3 @@ the running services.
 needed. They are not source inputs and must not be committed. Private state files
 must retain their service account ownership and mode `0600` on POSIX systems.
 
-## License status
-
-No project-wide license has been selected. This repository does not grant a
-project-wide open-source license. Existing third-party terms remain applicable;
-see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -121,7 +121,11 @@ Get-Content "$HalResults/matrix-reuse/jobs.jsonl" | ForEach-Object { $_ | Conver
 
 `config.json` captures the profile, `jobs.jsonl` keeps full records, and `summary.json` gives batch throughput and timing distributions. `case` identifies the function. Client, management and host times overlap; do not add them.
 
-For native mode, first have the operator switch the execution VM using section 9 of [START_HERE.md](START_HERE.md). That mode is shared by the service, not selected per submitted job. Once the service is native:
+For native mode, first have the operator configure both management and execution
+using [NATIVE_AUDIT_BENCHMARKS.md](NATIVE_AUDIT_BENCHMARKS.md). If the optional
+selector is installed, use [MODE_SELECTION.md](MODE_SELECTION.md) to switch.
+Changing a client profile does not switch the running services. Once native mode
+is ready, use its client profile for these commands:
 
 ```powershell
 & $HalPython fleet.py run --client state/alice.json --workload matrix-multiply --cache bypass --expect-mode native --expect-isolation in-process

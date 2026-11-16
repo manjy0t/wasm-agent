@@ -94,7 +94,7 @@ the separate Linux Docker/gVisor and TEE acceptance checks.
 
 ## Use and understand the system
 
-Start with [START_HERE.md](START_HERE.md). Service installation and agent
+Start with [FLEET.md](FLEET.md). Service installation and agent
 activation are separate operations; creating a client profile does not switch
 the running services.
 
@@ -105,7 +105,6 @@ the running services.
 | Trustee configuration and policy verification | [TRUSTEE.md](TRUSTEE.md) |
 | gVisor worker restrictions | [GVISOR.md](GVISOR.md) |
 | Individual workload permissions | [WORKLOAD_ACCESS.md](WORKLOAD_ACCESS.md) |
-| Agent controls and signed jobs | [AGENT_SECURITY.md](AGENT_SECURITY.md), [SIGNED_JOBS.md](SIGNED_JOBS.md) |
 | Audit records and persistence | [AUDIT.md](AUDIT.md) |
 | Audited native baseline | [NATIVE_AUDIT_BENCHMARKS.md](NATIVE_AUDIT_BENCHMARKS.md) |
 | Optional mode selector | [MODE_SELECTION.md](MODE_SELECTION.md) |
@@ -121,7 +120,7 @@ the running services.
 | `src/` | Native runner, brokers, workload execution, authorization, caches and workers |
 | `hal_fleet/`, `fleet.py` | Identity, files, management and execution API services and CLI |
 | `vendor/` | Vendored HAL/runtime and access-profile implementation, with provenance |
-| `containers/` | Worker image definition and build instructions |
+| `containers/` | Worker image definition; build instructions are in [GVISOR.md](GVISOR.md) |
 | `benchmarks/` | 15 computation workloads, independent reference checks and benchmark tools |
 | `tests/` | Unit/integration checks and the five original Wasm test fixtures |
 | `examples/` | Placeholder inventory, workload specification and policy templates |

@@ -58,7 +58,7 @@ Other useful suites include `tests/test_system.py`, `tests/test_tenants.py`,
 ## Linux worker acceptance
 
 Prepare Docker, the fixed gVisor runtime and the worker image using
-[GVISOR.md](GVISOR.md) and [containers/README.md](containers/README.md).
+[GVISOR.md](GVISOR.md).
 On an otherwise idle Linux test VM, after building the host and workload artifacts:
 
 ```sh

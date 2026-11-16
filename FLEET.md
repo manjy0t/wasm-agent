@@ -56,6 +56,7 @@ Prepare the reviewed attestation policy and portable deployment profile using
 [PORTABLE_AGENT.md](PORTABLE_AGENT.md). The verifier must already be available
 on management; [TRUSTEE.md](TRUSTEE.md) describes that adapter. Agent deployment
 requires the native base, gVisor runtime and approved environment.
+Example policy measurements are deliberately invalid placeholders.
 
 For an operator-managed four-VM installation, the generic CLI can copy source,
 build the native base and install service units on the existing inventory:
@@ -85,6 +86,8 @@ For individually managed machines, use `fleet.py init --help`,
 configuration and service units. [PORTABLE_AGENT.md](PORTABLE_AGENT.md) explains
 the required profiles and trust bindings. Generate units as the account that owns
 the configuration; execution's privileged launcher uses root.
+Keep private files owned by their service account with mode `0600`. Do not make
+keys or state world-writable to resolve a permissions error.
 
 The service names are `hal-fleet-identity`, `hal-fleet-files`,
 `hal-fleet-management` and `hal-fleet-execution`. Inspect the relevant VM with:
@@ -96,13 +99,29 @@ journalctl -u hal-fleet-management.service -n 50 --no-pager
 ```
 
 Substitute the relevant role. HTTPS `/health` establishes service liveness, not
-agent readiness or attestation. Use `agent-status` and `agent-deploy` on management
-as described in [START_HERE.md](START_HERE.md) to activate the configured target.
+agent readiness or attestation.
 
 The installer writes public endpoints and the identity signing-key fingerprint
 to `state/fleet-tls/deployment.json`. Keep the public `ca.pem` with that file when
 moving the client bootstrap to another machine. Do not replace its identity
 fingerprint with one obtained through an untrusted channel.
+
+## Activate the configured agent
+
+On the management VM, as the account that owns its configuration, inspect the
+target and request attested deployment:
+
+```sh
+.venv/bin/python fleet.py agent-status \
+  --config state/fleet.json --execution-url https://EXECUTION_VM
+
+.venv/bin/python fleet.py agent-deploy \
+  --config state/fleet.json --execution-url https://EXECUTION_VM
+```
+
+Replace `EXECUTION_VM` with the configured HTTPS address. Deployment requires
+successful verification and available lifecycle state. Investigate an unfinished
+drain or ownership conflict; do not delete ownership state to bypass it.
 
 ## Publish workloads
 

@@ -1,6 +1,6 @@
 # Select native or agent mode from management
 
-Prepare the agent and audited native profiles using [START_HERE.md](START_HERE.md)
+Prepare the agent and audited native profiles using [FLEET.md](FLEET.md)
 and [NATIVE_AUDIT_BENCHMARKS.md](NATIVE_AUDIT_BENCHMARKS.md) before configuring a selector.
 
 Management keeps the same HTTPS address. After one-time setup, the operator can

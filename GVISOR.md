@@ -75,20 +75,39 @@ configuration. Review it through your existing measured-boot and release process
 do not relax attestation policy to make an unexpected measurement pass. This
 update does not create new approved hardware measurements automatically.
 
+## Build the worker image
+
+For a manual installation, build the host and agents on the Linux execution/build
+machine using [README.md](README.md), and prepare Docker and the approved gVisor
+runtime. Stop the execution service before installing the runtime with
+`sudo "$PWD/.venv/bin/python" -m hal_fleet.gvisor setup --install-dependencies`.
+Omit the installation flag when the official package is already installed.
+A conflicting `hal-gvisor` entry is rejected for operator review.
+
+Then run this command from the repository root:
+
+```sh
+sudo "$PWD/.venv/bin/python" -m hal_fleet.worker_image \
+  --root "$PWD" --image hal-user-worker:local
+```
+
+The [Dockerfile](containers/Dockerfile) builds the Linux host with its libraries.
+The builder checks the immutable image ID, Linux/amd64 platform, non-root user
+and entrypoint, and probes the image before promoting its local tag.
+
+The launcher requires the local rootful Docker daemon. Remote daemons, rootless
+Docker and user-namespace remapping are not supported.
+
 ## Execution-VM checks
 
 These commands run **on the Linux execution VM**, from its repository directory:
 
 ```bash
-sudo .venv/bin/python -m hal_fleet.gvisor check
-sudo .venv/bin/python -B tests/test_docker_workers.py --image hal-user-worker:local --signed-jobs
-```
+sudo "$PWD/.venv/bin/python" -m hal_fleet.gvisor check
 
-For an explicitly manual installation, stop the execution service, then run
-`sudo .venv/bin/python -m hal_fleet.gvisor setup --install-dependencies` before the
-normal build/image/test steps. Omit the installation flag when the official
-package is already installed. A conflicting `hal-gvisor` entry is rejected for
-operator review; it is not silently overwritten.
+sudo "$PWD/.venv/bin/python" -B tests/test_docker_workers.py \
+  --image hal-user-worker:local --signed-jobs
+```
 
 The profile in [src/gvisor-runtime.json](src/gvisor-runtime.json) is shared by the
 installer, management checks and native launcher:
@@ -158,3 +177,15 @@ fixtures; they cannot validate Linux gVisor compatibility.
 Benchmark again after deployment. Record sandbox startup separately from warm
 jobs, and retain the runtime profile alongside the measurements. gVisor adds
 runtime overhead; this change makes no performance-improvement claim.
+
+## Worker lifetime and failures
+
+Removing a worker loses its compiled-code cache and private tmpfs data. Broker
+shutdown attempts to remove its workers; abrupt termination or daemon failure
+can leave cleanup incomplete. Use the managed retirement protocol and inspect
+actual process/container state. An absent agent does not prove successful cleanup.
+
+An IPC failure after dispatch may mean that a workload ran but its response was
+lost. It is recorded as failed or unknown; jobs are not automatically replayed.
+See [benchmarks/README.md](benchmarks/README.md) for startup, acquisition,
+preparation and execution timing scopes.

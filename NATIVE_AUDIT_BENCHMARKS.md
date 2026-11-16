@@ -1,6 +1,6 @@
 # Audited native baseline and separate benchmark experiments
 
-Use [START_HERE.md](START_HERE.md) for service prerequisites and
+Use [FLEET.md](FLEET.md) for service prerequisites and
 [benchmarks/README.md](benchmarks/README.md) for benchmark commands.
 
 Keep the implementations in one repository. Their startup paths remain different:

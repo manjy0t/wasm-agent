@@ -1,0 +1,14 @@
+{
+  "storage_backend": {
+    "storage_type": "LocalFs",
+    "backends": {"local_fs": {"dir_path": "/var/lib/hal-trustee"}}
+  },
+  "rvps_config": {"type": "BuiltIn"},
+  "attestation_token_broker": {
+    "duration_min": 1,
+    "issuer_name": "hal-management-trustee",
+    "profile_name": "tag:github.com,2024:confidential-containers/Trustee",
+    "signer": {"key_path": "/etc/hal-trustee/token.key"},
+    "verbose_token": true
+  }
+}

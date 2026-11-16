@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "sha256-abc",
+      "artifact": "function0.wasm",
+      "sha256": "3d199f2f514b9cd006db7ea739c7155fe2ea8e206d365507a5add06d89826a7d",
+      "artifact_bytes": 80756,
+      "work_bytes": 3,
+      "operations_per_call": 1,
+      "validation": {
+        "kind": "hex",
+        "value": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+    },
+    {
+      "name": "sha512-abc",
+      "artifact": "function1.wasm",
+      "sha256": "2c52c3dd3965f30fa95660e561d3d3c302cedb99b84ec8097e42e5cd3c5e64f9",
+      "artifact_bytes": 80740,
+      "work_bytes": 3,
+      "operations_per_call": 1,
+      "validation": {
+        "kind": "hex",
+        "value": "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f"
+      }
+    },
+    {
+      "name": "random-32",
+      "artifact": "function2.wasm",
+      "sha256": "f47826925aa30c1b767e188e3a4b76fb8ea96f97a94aaad68faf6c79a38b7857",
+      "artifact_bytes": 81284,
+      "work_bytes": 32,
+      "operations_per_call": 1,
+      "validation": {
+        "kind": "length",
+        "value": 32
+      }
+    },
+    {
+      "name": "platform",
+      "artifact": "function3.wasm",
+      "sha256": "cdff37e611f72e7544390deee1dd0ed66b0086687ad47dea4521872b523418f9",
+      "artifact_bytes": 72258,
+      "work_bytes": 0,
+      "operations_per_call": 1,
+      "validation": {
+        "kind": "utf8_contains",
+        "value": "IntelTdx|"
+      }
+    },
+    {
+      "name": "clock",
+      "artifact": "function4.wasm",
+      "sha256": "95c461579a27378b272a4b805ffffed841d07059c53de58997ddf450512e68f6",
+      "artifact_bytes": 82576,
+      "work_bytes": 0,
+      "operations_per_call": 1,
+      "validation": {
+        "kind": "clock"
+      }
+    }
+  ]
+}

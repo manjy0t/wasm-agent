@@ -1,0 +1,10 @@
+{
+  "tenant": "alice",
+  "case": "hash-large-v1",
+  "wasm": "../workloads/hash-large-v1.wasm",
+  "template": "sha256-abc",
+  "validation": {
+    "kind": "length",
+    "value": 32
+  }
+}

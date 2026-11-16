@@ -1,0 +1,9 @@
+{
+  "source": "enforcement-service-profiles/profile-core",
+  "version": "0.1.0",
+  "files": {
+    "Cargo.toml": "bb00b192c68b1d41db04d7c8b157623f261abbeb30e774f678a883d02a96017c",
+    "profile-v1.json": "db201f67594fa92d702a8cd6e4113e4589579b0ace72d6661b6236eda1f93d49",
+    "src/lib.rs": "b2feac57cff18524068c0752428f1ff4665f6c1cc6986839dad0e8b8c1eaca98"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "vms": {
+    "identity": {"ip": "192.0.2.10", "ssh_user": "ubuntu"},
+    "files": {"ip": "192.0.2.20", "ssh_user": "ubuntu"},
+    "execution": {"ip": "192.0.2.30", "ssh_user": "ubuntu"},
+    "management": {"ip": "192.0.2.40", "ssh_user": "ubuntu"}
+  }
+}

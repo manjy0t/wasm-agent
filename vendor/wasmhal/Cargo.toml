@@ -1,0 +1,107 @@
+[package]
+name = "elastic-tee-hal"
+version = "0.1.0"
+edition = "2021"
+authors = ["ELASTIC Consortium"]
+description = "Hardware Abstraction Layer for Trusted Execution Environments in confidential computing"
+license = "MIT"
+repository = "https://github.com/syafiq/wasmhal"
+
+[dependencies]
+# WASI and WebAssembly Component Model
+wasi = "0.13"
+wit-bindgen = "0.30"
+wasmtime = { version = "25", features = ["component-model"], optional = true }
+cargo-component = { version = "0.13", optional = true }
+
+# Async runtime and networking
+tokio = { version = "1.0", features = ["full"] }
+tokio-rustls = "0.26"
+rustls = { version = "0.23", features = ["ring"] }
+webpki-roots = "0.26"
+
+# Cryptography
+ring = "0.17"
+aes-gcm = "0.10"
+chacha20poly1305 = "0.10"
+x25519-dalek = "2.0"
+ed25519-dalek = "2.1"
+sha2 = "0.10"
+hmac = "0.12"
+
+# Storage and serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+bincode = "1.3"
+
+# Platform-specific
+libc = "0.2"
+
+# GPU (placeholder for future GPU support)
+wgpu = { version = "0.20", optional = true }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Async executor for wasmtime bindings
+futures = "0.3"
+
+# Random number generation
+getrandom = { version = "0.2", features = ["std"] }
+
+# Hex encoding for demo
+hex = "0.4"
+
+# HTTP client for Intel Trust Authority (ITA) attestation verification
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Base64 encoding for ITA quote submission
+base64 = "0.22"
+
+# Azure SEV-SNP attestation via the guest vTPM (HCL report + TPM quote).
+# Used by the `amd-sev` feature on Azure CVMs, where the paravisor exposes a
+# vTPM instead of /dev/sev-guest.
+#
+# x86_64 only: `az-snp-vtpm` links `tss-esapi`, which has no aarch64 or riscv64
+# support. Keeping these target-scoped means a consumer that enables `amd-sev`
+# unconditionally (e.g. a default feature) still cross-compiles for arm64 and
+# riscv64 — the feature simply resolves to nothing there.
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+az-cvm-vtpm = { version = "0.8", optional = true }
+az-snp-vtpm = { version = "0.8", default-features = false, features = ["attester"], optional = true }
+
+[features]
+default = ["amd-sev", "intel-tdx"]
+# `amd-sev` covers both bare-metal /dev/sev-guest guests and Azure SEV-SNP CVMs
+# whose evidence comes from the vTPM.
+amd-sev = ["dep:az-cvm-vtpm", "dep:az-snp-vtpm"]
+# `intel-tdx` covers TDX guests that expose the Linux TSM (`/dev/tdx_guest`),
+# which is how bare-metal, GCE C3/C4 and other TDX cloud instances report.
+# It needs no platform library, so a TDX-only build can drop the Azure vTPM
+# dependencies that `amd-sev` pulls in. Without it, `attestation()` on a TDX
+# guest returns `PlatformNotSupported` instead of silently reporting a stub.
+intel-tdx = []
+gpu = ["wgpu"]
+component = ["wasmtime", "cargo-component"]
+wasmtime = ["dep:wasmtime"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dev-dependencies]
+tempfile = "3.21.0"
+# Used by the rp_attestation_flow example to actually execute the
+# decrypted WASM payload after the relying party releases the key.
+wasmtime = { version = "25" }
+wasmtime-wasi = "25"
+
+[package.metadata.component]
+package = "elastic:tee-hal"
+
+[package.metadata.component.dependencies]

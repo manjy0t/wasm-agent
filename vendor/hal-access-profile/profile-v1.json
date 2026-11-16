@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "operations": {
+    "crypto.hash.sha256": "crypto",
+    "crypto.hash.sha512": "crypto",
+    "crypto.hash.blake3": "crypto",
+    "crypto.encrypt": "crypto",
+    "crypto.decrypt": "crypto",
+    "crypto.generate-keypair": "crypto",
+    "crypto.sign": "crypto",
+    "crypto.verify": "crypto",
+    "crypto.create-context": "crypto",
+    "crypto.destroy-context": "crypto",
+    "storage.create-container": "storage",
+    "storage.open-container": "storage",
+    "storage.delete-container": "storage",
+    "storage.store-object": "storage",
+    "storage.retrieve-object": "storage",
+    "storage.delete-object": "storage",
+    "storage.list-objects": "storage",
+    "storage.get-metadata": "storage",
+    "clock.get-system-time": "clock",
+    "clock.get-monotonic-time": "clock",
+    "clock.resolution": "clock",
+    "random.get-random-bytes": "random",
+    "random.get-secure-random": "random",
+    "random.get-entropy-info": "random",
+    "random.reseed": "random",
+    "platform.metadata": "",
+    "wasi.random": "random",
+    "wasi.insecure-random": "random",
+    "wasi.clock": "clock"
+  },
+  "templates": {
+    "compute": [],
+    "sha256": [
+      "crypto.hash.sha256"
+    ],
+    "sha512": [
+      "crypto.hash.sha512"
+    ],
+    "hashes": [
+      "crypto.hash.sha256",
+      "crypto.hash.sha512",
+      "crypto.hash.blake3"
+    ],
+    "signature-verify": [
+      "crypto.verify"
+    ],
+    "random": [
+      "random.get-random-bytes",
+      "random.get-secure-random",
+      "random.get-entropy-info"
+    ],
+    "clock": [
+      "clock.get-system-time",
+      "clock.get-monotonic-time",
+      "clock.resolution"
+    ],
+    "platform": [
+      "platform.metadata"
+    ],
+    "storage-read": [
+      "storage.open-container",
+      "storage.retrieve-object",
+      "storage.list-objects",
+      "storage.get-metadata"
+    ],
+    "storage-write": [
+      "storage.create-container",
+      "storage.open-container",
+      "storage.store-object"
+    ],
+    "wasi-random": [
+      "wasi.random"
+    ],
+    "wasi-clock": [
+      "wasi.clock"
+    ]
+  },
+  "host_interfaces": [
+    "elastic:hal/platform@0.1.0",
+    "elastic:hal/attestation@0.1.0",
+    "elastic:hal/crypto@0.1.0",
+    "elastic:hal/storage@0.1.0",
+    "elastic:hal/sockets@0.1.0",
+    "elastic:hal/gpu@0.1.0",
+    "elastic:hal/resources@0.1.0",
+    "elastic:hal/events@0.1.0",
+    "elastic:hal/communication@0.1.0",
+    "elastic:hal/clock@0.1.0",
+    "elastic:hal/random@0.1.0",
+    "wasi:cli/environment@0.2.0",
+    "wasi:cli/exit@0.2.0",
+    "wasi:cli/stdin@0.2.0",
+    "wasi:cli/stdout@0.2.0",
+    "wasi:cli/stderr@0.2.0",
+    "wasi:cli/terminal-input@0.2.0",
+    "wasi:cli/terminal-output@0.2.0",
+    "wasi:cli/terminal-stdin@0.2.0",
+    "wasi:cli/terminal-stdout@0.2.0",
+    "wasi:cli/terminal-stderr@0.2.0",
+    "wasi:filesystem/types@0.2.0",
+    "wasi:filesystem/preopens@0.2.0",
+    "wasi:io/streams@0.2.0",
+    "wasi:io/poll@0.2.0",
+    "wasi:io/error@0.2.0",
+    "wasi:clocks/wall-clock@0.2.0",
+    "wasi:clocks/monotonic-clock@0.2.0",
+    "wasi:random/random@0.2.0",
+    "wasi:random/insecure@0.2.0",
+    "wasi:random/insecure-seed@0.2.0"
+  ]
+}

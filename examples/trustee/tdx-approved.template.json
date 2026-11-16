@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "platform": "intel-tdx",
+  "runtime_binding": "approved-measured-boot",
+  "lease_seconds": 10800,
+  "measurements": {
+    "mrtd": "REPLACE_WITH_APPROVED_96_HEX_DIGEST",
+    "rtmr0": "REPLACE_WITH_APPROVED_96_HEX_DIGEST",
+    "rtmr1": "REPLACE_WITH_APPROVED_96_HEX_DIGEST",
+    "rtmr2": "REPLACE_WITH_APPROVED_96_HEX_DIGEST",
+    "rtmr3": "REPLACE_WITH_APPROVED_96_HEX_DIGEST"
+  }
+}

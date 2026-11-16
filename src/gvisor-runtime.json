@@ -1,0 +1,14 @@
+{
+  "profile": "gvisor-per-user-v1",
+  "runtime": "hal-gvisor",
+  "scope": "user",
+  "path": "/usr/bin/runsc",
+  "runtimeArgs": [
+    "--platform=systrap",
+    "--network=none",
+    "--host-uds=all",
+    "--directfs=false",
+    "--file-access-mounts=shared",
+    "--allow-flag-override=false"
+  ]
+}

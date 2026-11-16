@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "platform": "amd-sev-snp",
+  "runtime_binding": "approved-measured-boot",
+  "lease_seconds": 10800,
+  "measurements": {"measurement": "REPLACE_WITH_APPROVED_96_HEX_DIGEST"},
+  "snp_product": "Genoa",
+  "snp_minimum_tcb": {"bootloader": null, "tee": null, "snp": null, "microcode": null}
+}

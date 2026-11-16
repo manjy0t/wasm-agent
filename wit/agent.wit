@@ -1,0 +1,50 @@
+package elastic:job-agent@0.5.0;
+
+// The native host binds every service to the current authorized request.
+// A guest cannot supply another URL, process, filename, or compiled handle.
+interface services {
+    enum cache-policy { reuse, bypass }
+    record constraints {
+        policy-sha256: string,
+        cache-allowed: bool,
+        max-output-bytes: u32,
+        result-rule-json: string,
+        container-required: bool,
+    }
+    record job {
+        id: string,
+        tenant: string,
+        artifact-sha256: string,
+        component: string,
+        artifact-bytes: u64,
+        ticket-json: string,
+        policy: cache-policy,
+        limits: constraints,
+    }
+    record completion { worker-job-number: u64, data: list<u8> }
+    // First approve a plan. The host permits only the authenticated job's policy.
+    authorize-cache: func(selected: cache-policy) -> result<_, string>;
+    // No tenant, image, command, mount or resource arguments: the host pins all
+    // of these to the authenticated user and operator configuration.
+    // Launch in the job-bound user container. No caller-selected process/mounts.
+    launch-workload: func() -> result<list<u8>, string>;
+    ensure-user-container: func() -> result<_, string>;
+    run-in-user-container: func() -> result<list<u8>, string>;
+    find-prepared: func() -> result<bool, string>;
+    prepare: func() -> result<_, string>;
+    execute: func() -> result<list<u8>, string>;
+    // The host validates its retained result, never caller-supplied replacement bytes.
+    commit-result: func() -> result<_, string>;
+}
+
+world agent {
+    import services;
+    use services.{job, completion};
+    // Called once by the trusted operator host, before any job. Requests cannot
+    // replace this context. Empty context means the explicitly unsigned profile.
+    // Called once before jobs; only the trusted management agent receives this.
+    // Workload guests have a different world and cannot import this configuration.
+    export initialize-configuration: func(config-json: string) -> result<_, string>;
+    export initialize-authorization: func(context-json: string) -> result<_, string>;
+    export handle-job: func(request: job) -> result<completion, string>;
+}

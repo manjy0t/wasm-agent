@@ -1,0 +1,24 @@
+package elastic:orchestration@1.1.0;
+
+// The native host binds these operations to the current management grant/job.
+// Workload components never receive this linker, credentials, or broker handles.
+interface control {
+    // Only callable within an owner-authorized drain, after all jobs have finished.
+    stop-user-brokers: func() -> result<_, string>;
+    launch-user-broker: func() -> result<string, string>;
+    apply-workload-policy: func(policy-json: string) -> result<_, string>;
+    // Starts an authorized job; execution proceeds outside the shared Wasm Store.
+    launch-workload: func() -> result<_, string>;
+    // Commits only the result retained by the native host for this job.
+    commit-result: func() -> result<_, string>;
+}
+
+world orchestrator {
+    import control;
+    export initialize: func(configuration-json: string) -> result<_, string>;
+    export begin-drain: func() -> result<_, string>;
+    export finish-drain: func() -> result<_, string>;
+    export enroll-user: func(grant-json: string) -> result<_, string>;
+    export authorize-job: func(request-json: string) -> result<_, string>;
+    export complete-job: func(completion-json: string) -> result<_, string>;
+}

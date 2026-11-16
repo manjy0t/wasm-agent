@@ -1,0 +1,117 @@
+/// Confidential Computing Elastic TEE HAL - Hardware Abstraction Layer
+/// for Trusted Execution Environments supporting WASI 0.2 specification
+///
+/// This crate provides a comprehensive interface for TEE workloads to interact
+/// with platform-specific hardware features while maintaining portability across
+/// different TEE implementations (AMD SEV-SNP, Intel TDX, ARM TrustZone, etc.)
+// WIT bindgen configuration - enable when WIT dependencies are fully resolved
+// For now, the WIT definitions are available in ./wit/world.wit
+// wit_bindgen::generate!({
+//     world: "elastic-tee-hal",
+//     path: "wit"
+// });
+pub mod capabilities;
+pub mod clock;
+pub mod communication;
+pub mod crypto;
+pub mod error;
+pub mod events;
+pub mod gpu;
+pub mod platform;
+pub mod random;
+pub mod resources;
+#[cfg(all(feature = "amd-sev", target_arch = "x86_64"))]
+pub mod sev_snp_tsm;
+#[cfg(all(feature = "amd-sev", target_arch = "x86_64"))]
+pub mod sev_vtpm;
+// Parsing of the firmware-signed AMD SEV-SNP attestation report. Kept
+// unconditional: it is pure layout decoding with no vendor dependency, so it
+// stays testable (and reusable) in builds without `amd-sev`.
+pub mod snp_report;
+// Vendor-neutral TSM report requests and the running-binary hash, shared by
+// the TDX and SEV-SNP paths.
+pub mod attestation;
+pub mod sockets;
+pub mod storage;
+
+// Modular interface system
+pub mod enforcement;
+pub mod interfaces;
+#[cfg(all(feature = "intel-tdx", target_arch = "x86_64"))]
+pub mod ita;
+pub mod providers;
+#[cfg(all(feature = "intel-tdx", target_arch = "x86_64"))]
+pub mod tdx_quote;
+
+// Re-export main types
+pub use capabilities::PlatformCapabilities;
+pub use clock::ClockInterface;
+pub use communication::{
+    BufferConfig, CommBufferHandle, CommMessage, CommunicationInterface, MessagePriority,
+    MessageType,
+};
+pub use crypto::CryptoInterface;
+pub use error::{HalError, HalResult};
+pub use events::EventInterface;
+pub use gpu::GpuInterface;
+pub use platform::ElasticTeeHal;
+pub use random::RandomInterface;
+pub use resources::ResourceInterface;
+pub use sockets::SocketInterface;
+pub use storage::StorageInterface;
+
+/// HAL version information
+pub const HAL_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const HAL_NAME: &str = "ELASTIC TEE HAL";
+
+// WIT interface implementations - these will be populated by wit_bindgen
+// when the macro is enabled
+/*
+pub struct Platform;
+pub struct Capabilities;
+pub struct Crypto;
+pub struct Storage;
+pub struct Sockets;
+pub struct Gpu;
+pub struct Resources;
+pub struct Events;
+pub struct Communication;
+pub struct Clock;
+pub struct Random;
+*/
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn init() {
+        static INIT: std::sync::Once = std::sync::Once::new();
+        INIT.call_once(|| {
+            let _ = env_logger::builder().is_test(true).try_init();
+        });
+    }
+
+    #[test]
+    fn test_hal_creation() {
+        init();
+        // Test with a specific platform since auto-detection requires actual hardware
+        let hal = ElasticTeeHal::with_platform(platform::PlatformType::AmdSev);
+        match &hal {
+            Ok(_) => {}
+            Err(e) => log::error!("HAL creation failed: {:?}", e),
+        }
+        assert!(hal.is_ok());
+    }
+
+    #[test]
+    fn test_platform_detection() {
+        init();
+        // Test auto-detection to see what's available
+        let hal = ElasticTeeHal::new();
+        match &hal {
+            Ok(_) => log::info!("Platform auto-detection succeeded!"),
+            Err(e) => log::error!("Platform auto-detection failed: {:?}", e),
+        }
+        // Don't assert since this might fail on non-TEE hardware
+    }
+}

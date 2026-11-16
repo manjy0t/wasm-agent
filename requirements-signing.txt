@@ -1,0 +1,5 @@
+# Required by fleet.py on all four API services and on user/operator clients.
+# The older server/management.py and server/file_server.py remain stdlib-only.
+cryptography==50.0.2
+# Native Windows client key-file ACLs; not installed on Linux/macOS or the VMs.
+pywin32==312; sys_platform == 'win32'

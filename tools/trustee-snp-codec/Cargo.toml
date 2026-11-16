@@ -1,0 +1,20 @@
+[package]
+name = "hal-trustee-snp-codec"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Management-side codec only. Keep it out of the native runner and Wasm agent.
+[workspace]
+
+[dependencies]
+anyhow = "1"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Exact revision used by Trustee v0.22.0 (including its serde fixes).
+sev = { git = "https://github.com/virtee/sev", rev = "d487809188c3c92e397bc92e2cb2a85eb982c980", default-features = false, features = ["snp", "serde"] }
+
+[dev-dependencies]
+# Evaluate generated policy with the same Rego engine version as Trustee.
+regorus = "=0.11.0"

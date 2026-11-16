@@ -1,0 +1,150 @@
+{
+  "source": "User-provided wasmhal-main snapshot, inspected 2026-10-11",
+  "files": [
+    {
+      "path": "Cargo.toml",
+      "sha256": "eeed44a632a2ab2db38baee3602d7642b7c5fdfb4b149786f49de14595cf0e3d"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "7d773d7cab70aab340a4b01901d20a750c11a6dfaabdb8a0ba8eaa3d4825d0d6"
+    },
+    {
+      "path": "hal-runtime/Cargo.toml",
+      "sha256": "e590835d2519d9560944ab74534a29a0b35fcbe4a49070f88dd6a64aa7b32c16"
+    },
+    {
+      "path": "hal-runtime/src/host_impl.rs",
+      "sha256": "c1e393f7d6087f2347d79e049f0fbd852ffe9c3ca9884b79910bb2172589fcbd"
+    },
+    {
+      "path": "hal-runtime/src/lib.rs",
+      "sha256": "936708e6082e9b6b631080b3445cf0fd25295c70ec5f1641fcb26de801365fbc",
+      "upstream_sha256": "8b648428351b249fb8eab7cdd53cc087ae889df93091fe06087d8bd2b7773ab9"
+    },
+    {
+      "path": "hal-runtime/src/main.rs",
+      "sha256": "46318f32db9f22e88459ad4376830803ef81e778221636b3ef65c36c9ccc0005"
+    },
+    {
+      "path": "hal-runtime/src/wit_impl.rs",
+      "sha256": "f5c62f2279f75ea328b6906107c4f12e4dbcf2bef6cff3929c1ff852ee091f4e",
+      "upstream_sha256": "720883063d022998aad39a9965453224352bf77f719c22bf6fbbf6bbd48b242f"
+    },
+    {
+      "path": "hal-runtime/wit/hal.wit",
+      "sha256": "95f4b7fb6d8fcff073d907e43c9b0a6a286d3d6fda189aaa574e72e2ad845b33"
+    },
+    {
+      "path": "src/attestation.rs",
+      "sha256": "f37b70d5ff58e98208d3b02cf29b2a438a089986ee32a213af87f8faef8bb50f"
+    },
+    {
+      "path": "src/capabilities.rs",
+      "sha256": "6e486c006341837dea05162b64a17b65f9c35d1e83ca03a2cb148f90060c4777"
+    },
+    {
+      "path": "src/clock.rs",
+      "sha256": "c6182133c990b3895d08fcd4439989584e591a9364ab8d793f7a1c1ed027caac"
+    },
+    {
+      "path": "src/communication.rs",
+      "sha256": "14e5854f91f1b5d1d3df8dff6bf24760e4a15226a3d5b38ce08a2ed63c5e1ceb"
+    },
+    {
+      "path": "src/crypto.rs",
+      "sha256": "e9e83ffd1e2c3e7186c53cc843ed1571af05efcfdb6df2f67d39cf0cef9dee26"
+    },
+    {
+      "path": "src/enforcement/audit.rs",
+      "sha256": "37951cb5e5ab5bddaed3858d77ed809fb5ebdaccc2e9f0c559b46c1d5c29daf5"
+    },
+    {
+      "path": "src/enforcement/engine.rs",
+      "sha256": "1bdc71be44e66e23a984b08d34eed15eb05946eadfcb4ee82825f732c4416821"
+    },
+    {
+      "path": "src/enforcement/mod.rs",
+      "sha256": "22d75be89fb177b42538bb3bd189fa11abffc1665fbce2f257d2cafd82cccdba"
+    },
+    {
+      "path": "src/enforcement/policy.rs",
+      "sha256": "0d2866c54073ce35533742c9a88f18c5bec79b6d1ee5fefa5ad6d35af15d58fc"
+    },
+    {
+      "path": "src/enforcement/wrappers.rs",
+      "sha256": "acc3f7608efbedb18d6ba4aeab5705470e1c98c3ab7f6ca494c211287be6f697"
+    },
+    {
+      "path": "src/error.rs",
+      "sha256": "f3b93a8876a4e15361a84cc603a0a91bc1eac25359ff72b841407c8d45a01b30"
+    },
+    {
+      "path": "src/events.rs",
+      "sha256": "43d8cf7a4f20e78febe403647575a20803e606b7e35be0d074a8c72734990870"
+    },
+    {
+      "path": "src/gpu.rs",
+      "sha256": "dc16a90db1f87ecf09766e946a38fd5d80f303d12236df61e2fe933f3f4b1a1b"
+    },
+    {
+      "path": "src/interfaces.rs",
+      "sha256": "f5ddf6143dd6f5bd9509fea5366ccd1e0db38e9a770abd174f7353f10fe881ea"
+    },
+    {
+      "path": "src/ita.rs",
+      "sha256": "dba11a2e24b6bddec845c05505ed937e43872a5b02e58b4c99b189870dacf34b"
+    },
+    {
+      "path": "src/lib.rs",
+      "sha256": "857bcde393a3aac4b46e287acaba838a9579091d0e9d4745870bf8f3bfd21827"
+    },
+    {
+      "path": "src/platform.rs",
+      "sha256": "cda2eb4a51dbc726c96b36128417c60bfdbcd7d1d66bfe5246c831970c87d199"
+    },
+    {
+      "path": "src/providers.rs",
+      "sha256": "802c8c42a9f72f475963f74dc6863be4813888ddb812be3dae5a6c4f62f44727"
+    },
+    {
+      "path": "src/random.rs",
+      "sha256": "65b35ad1b1a6f126a1e27b902148b816ee813e1acc4d090175b129810ebe7409"
+    },
+    {
+      "path": "src/resources.rs",
+      "sha256": "8744d2c4dc12f1d44eda056447f3c54255d6c60fe09ce7425158aad7663e8ff3"
+    },
+    {
+      "path": "src/sev_snp_tsm.rs",
+      "sha256": "37415d85041dc69a0ff3c17c22a6790a9741261e2e05dcd587b1732af2455a26"
+    },
+    {
+      "path": "src/sev_vtpm.rs",
+      "sha256": "79eb7a58f899576ad2dc7c238da1b786257420d184fa6f89ce23784f8aefb023"
+    },
+    {
+      "path": "src/snp_report.rs",
+      "sha256": "520f232b29ac75624b5818af320d4960e628581f93397c8e52772edb86d902ae"
+    },
+    {
+      "path": "src/sockets.rs",
+      "sha256": "1ecea688f378e08fc006500faf8a911ace0abd8cbe1f62012bfac12e86ec6064"
+    },
+    {
+      "path": "src/storage.rs",
+      "sha256": "473502be957070bed1e03449ce144d105eefb5ca70a14f07a0f38be68eb1914e"
+    },
+    {
+      "path": "src/tdx_quote.rs",
+      "sha256": "cefd85d2f5c3e7084a98341d9f0373debd082b78e7ba1e47b52f7a797eb718ad"
+    }
+  ],
+  "local_modifications": {
+    "purpose": "Bounded fresh workload stores, fuel/epoch limits, isolated WASI, and disabled attestation import for the on-demand experiment.",
+    "files": [
+      "hal-runtime/src/lib.rs",
+      "hal-runtime/src/wit_impl.rs"
+    ]
+  }
+}

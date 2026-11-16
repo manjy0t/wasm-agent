@@ -1,0 +1,9 @@
+package elastic:hal@0.1.0;
+
+interface run {
+  run: func() -> list<u8>;
+}
+
+world benchmark {
+  export run;
+}

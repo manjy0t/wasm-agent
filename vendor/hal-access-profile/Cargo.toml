@@ -1,0 +1,11 @@
+[package]
+name = "hal-access-profile"
+version = "0.1.0"
+edition = "2021"
+description = "Deterministic, artifact-bound workload permission profiles; no network service"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[workspace]

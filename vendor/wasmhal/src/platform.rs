@@ -1,0 +1,727 @@
+// Main ELASTIC TEE HAL Platform Implementation
+
+use crate::capabilities::PlatformCapabilities;
+use crate::error::{HalError, HalResult};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
+/// Main ELASTIC TEE HAL structure
+pub struct ElasticTeeHal {
+    platform_type: PlatformType,
+    capabilities: Arc<RwLock<PlatformCapabilities>>,
+    initialized: bool,
+}
+
+/// Supported TEE platform types
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PlatformType {
+    AmdSev,
+    IntelTdx,
+    // Future platform support can be added here
+}
+
+impl ElasticTeeHal {
+    /// Metadata supplied by a trusted enclosing VM broker to a confined worker.
+    /// This does not detect a TEE, initialize devices, or enable attestation.
+    pub fn metadata_only(platform_type: PlatformType) -> Self {
+        Self {
+            capabilities: Arc::new(RwLock::new(PlatformCapabilities::new(
+                platform_type.clone(),
+            ))),
+            platform_type,
+            initialized: false,
+        }
+    }
+    /// Create a new HAL instance with platform auto-detection
+    pub fn new() -> HalResult<Self> {
+        // Initialize the crypto provider for Rustls
+        Self::init_crypto_provider()?;
+
+        let platform_type = Self::detect_platform()?;
+        let capabilities = Arc::new(RwLock::new(PlatformCapabilities::new(
+            platform_type.clone(),
+        )));
+
+        let mut hal = Self {
+            platform_type,
+            capabilities,
+            initialized: false,
+        };
+
+        hal.initialize()?;
+        Ok(hal)
+    }
+
+    /// Create a HAL instance for a specific platform type
+    pub fn with_platform(platform_type: PlatformType) -> HalResult<Self> {
+        // Initialize the crypto provider for Rustls
+        Self::init_crypto_provider()?;
+
+        let capabilities = Arc::new(RwLock::new(PlatformCapabilities::new(
+            platform_type.clone(),
+        )));
+
+        let mut hal = Self {
+            platform_type,
+            capabilities,
+            initialized: false,
+        };
+
+        hal.initialize()?;
+        Ok(hal)
+    }
+
+    /// Initialize the HAL with platform-specific setup
+    fn initialize(&mut self) -> HalResult<()> {
+        match self.platform_type {
+            PlatformType::AmdSev => self.init_amd_sev()?,
+            PlatformType::IntelTdx => self.init_intel_tdx()?,
+        }
+
+        self.initialized = true;
+        log::info!(
+            "ELASTIC TEE HAL initialized for platform: {:?}",
+            self.platform_type
+        );
+        Ok(())
+    }
+
+    /// Initialize the crypto provider for Rustls
+    fn init_crypto_provider() -> HalResult<()> {
+        use std::sync::Once;
+        static INIT: Once = Once::new();
+
+        INIT.call_once(|| {
+            // Install the ring crypto provider for Rustls
+            let _ = rustls::crypto::ring::default_provider().install_default();
+        });
+
+        Ok(())
+    }
+
+    /// Detect the current TEE platform
+    fn detect_platform() -> HalResult<PlatformType> {
+        // Check for AMD SEV-SNP
+        if Self::is_amd_sev_available() {
+            return Ok(PlatformType::AmdSev);
+        }
+
+        // Check for Intel TDX
+        if Self::is_intel_tdx_available() {
+            return Ok(PlatformType::IntelTdx);
+        }
+
+        Err(HalError::PlatformNotSupported(
+            "No supported TEE platform detected".to_string(),
+        ))
+    }
+
+    /// Check if AMD SEV is available
+    fn is_amd_sev_available() -> bool {
+        // In a real implementation, this would check:
+        // - CPU vendor (AMD)
+        // - SEV capability in CPUID
+        // - /dev/sev device availability
+        // - SNP guest status
+
+        #[cfg(target_arch = "x86_64")]
+        {
+            // Check for AMD CPU vendor
+            let is_amd = Self::is_amd_cpu();
+
+            // Check for SEV guest device (SNP environments)
+            let has_sev_guest = Self::has_sev_guest_device();
+
+            // Check for SEV device (host environments)
+            let has_sev_dev = std::path::Path::new("/dev/sev").exists();
+
+            // Check for TSM support (Trust Security Module for attestation)
+            let has_tsm = Self::has_tsm_support();
+
+            // Azure confidential VMs run behind a paravisor: none of the SEV
+            // device nodes or the TSM configfs exist, but the guest does have a
+            // vTPM carrying an HCL report. Treat that as SEV-SNP too.
+            //
+            // Only ask the vTPM on a host that could actually answer — see
+            // `is_azure_host`. The probe opens the TPM and reads an Azure NV
+            // index, and its failure path writes to stderr from inside the tss2
+            // C layer, which no log filter can suppress.
+            let has_vtpm = std::path::Path::new("/dev/tpm0").exists()
+                || std::path::Path::new("/dev/tpmrm0").exists();
+            let on_azure = is_azure_host();
+            let azure_vtpm = has_vtpm && on_azure && Self::is_azure_snp_vtpm();
+
+            log::debug!("AMD SEV Detection:");
+            log::debug!("  - AMD CPU: {}", is_amd);
+            log::debug!("  - /dev/sev-guest: {}", has_sev_guest);
+            log::debug!("  - /dev/sev: {}", has_sev_dev);
+            log::debug!("  - TSM support: {}", has_tsm);
+            log::debug!("  - vTPM: {}", has_vtpm);
+            log::debug!("  - Azure host: {}", on_azure);
+            log::debug!("  - Azure vTPM (SNP): {}", azure_vtpm);
+
+            azure_vtpm || (is_amd && (has_sev_guest || has_sev_dev) && has_tsm)
+        }
+        #[cfg(not(target_arch = "x86_64"))]
+        false
+    }
+
+    /// Whether the SEV-SNP guest device node is present.
+    ///
+    /// Extracted so detection and the attestation error path cannot disagree
+    /// about what "available" means: a second, drifting copy of this path would
+    /// let the error claim a device is missing while it is present.
+    pub(crate) fn has_sev_guest_device() -> bool {
+        std::path::Path::new("/dev/sev-guest").exists()
+    }
+
+    /// Whether the Linux TSM configfs used to request an SNP report is mounted.
+    pub(crate) fn has_tsm_support() -> bool {
+        crate::attestation::tsm_available()
+    }
+
+    /// Whether an attestation evidence source is actually present on this host.
+    ///
+    /// Reported through `PlatformCapabilities::features.attestation` so that a
+    /// workload asking "can you attest?" gets an answer that reflects the guest
+    /// it is running on. Deriving that flag from `cfg!` alone would answer
+    /// "yes" on any host built with the feature, including one with no TSM
+    /// configfs, no attestation device, or no vTPM — sending the caller straight
+    /// into a `PlatformNotSupported` failure it had been told would not happen.
+    ///
+    /// Only cheap structural checks (device and configfs existence) are used.
+    /// Deliberately does *not* probe the Azure vTPM: that opens the device, and
+    /// the tss2 C layer reports failures straight to stderr past any log filter,
+    /// which is far too heavy and noisy for a capability query.
+    pub(crate) fn attestation_available(platform_type: &PlatformType) -> bool {
+        match platform_type {
+            PlatformType::AmdSev => {
+                #[cfg(all(feature = "amd-sev", target_arch = "x86_64"))]
+                {
+                    let on_azure = is_azure_host();
+                    let has_vtpm = std::path::Path::new("/dev/tpm0").exists()
+                        || std::path::Path::new("/dev/tpmrm0").exists();
+
+                    // Azure: the paravisor's vTPM is the only source, and it
+                    // hides /dev/sev-guest. Elsewhere the firmware serves the
+                    // report through the TSM.
+                    (on_azure && has_vtpm)
+                        || (Self::has_sev_guest_device() && Self::has_tsm_support())
+                }
+                #[cfg(not(all(feature = "amd-sev", target_arch = "x86_64")))]
+                {
+                    false
+                }
+            }
+            PlatformType::IntelTdx => {
+                #[cfg(all(feature = "intel-tdx", target_arch = "x86_64"))]
+                {
+                    std::path::Path::new("/dev/tdx_guest").exists() && Self::has_tsm_support()
+                }
+                #[cfg(not(all(feature = "intel-tdx", target_arch = "x86_64")))]
+                {
+                    false
+                }
+            }
+        }
+    }
+
+    /// Whether this guest is an Azure SEV-SNP CVM, determined by asking the
+    /// vTPM for its HCL report. Returns false on any error or non-SNP guest.
+    #[cfg(all(feature = "amd-sev", target_arch = "x86_64"))]
+    fn is_azure_snp_vtpm() -> bool {
+        match az_snp_vtpm::is_snp_cvm() {
+            Ok(is_snp) => is_snp,
+            Err(e) => {
+                log::debug!("Failed to read HCL report from vTPM: {}", e);
+                false
+            }
+        }
+    }
+
+    #[cfg(not(all(feature = "amd-sev", target_arch = "x86_64")))]
+    fn is_azure_snp_vtpm() -> bool {
+        false
+    }
+
+    /// Check if this is an AMD CPU
+    fn is_amd_cpu() -> bool {
+        // Read /proc/cpuinfo to check vendor
+        if let Ok(content) = std::fs::read_to_string("/proc/cpuinfo") {
+            content.contains("vendor_id\t: AuthenticAMD")
+        } else {
+            false
+        }
+    }
+
+    /// Check if Intel TDX is available
+    pub fn is_intel_tdx_available() -> bool {
+        // Check for Intel TDX Trust Domain
+        // This verifies:
+        // - CPU vendor (Intel)
+        // - TDX guest device
+        // - TDX capability in CPU flags
+        // - TSM (Trust Security Module) support for attestation
+
+        #[cfg(target_arch = "x86_64")]
+        {
+            // Check for Intel CPU vendor
+            let is_intel = Self::is_intel_cpu();
+
+            // Check for TDX guest device
+            let has_tdx_guest = std::path::Path::new("/dev/tdx_guest").exists();
+
+            // Check for TSM support (Trust Security Module for attestation)
+            let has_tsm = std::path::Path::new("/sys/kernel/config/tsm/report").exists();
+
+            // Check for TDX guest flag in CPU features
+            let has_tdx_flag = Self::has_tdx_cpu_flag();
+
+            log::debug!("Intel TDX Detection:");
+            log::debug!("  - Intel CPU: {}", is_intel);
+            log::debug!("  - /dev/tdx_guest: {}", has_tdx_guest);
+            log::debug!("  - TSM support: {}", has_tsm);
+            log::debug!("  - TDX CPU flag: {}", has_tdx_flag);
+
+            is_intel && has_tdx_guest && has_tsm && has_tdx_flag
+        }
+        #[cfg(not(target_arch = "x86_64"))]
+        false
+    }
+
+    /// Check if this is an Intel CPU
+    fn is_intel_cpu() -> bool {
+        // Read /proc/cpuinfo to check vendor
+        if let Ok(content) = std::fs::read_to_string("/proc/cpuinfo") {
+            content.contains("vendor_id\t: GenuineIntel")
+        } else {
+            false
+        }
+    }
+
+    /// Check for TDX guest CPU flag
+    fn has_tdx_cpu_flag() -> bool {
+        if let Ok(content) = std::fs::read_to_string("/proc/cpuinfo") {
+            content.contains("tdx_guest")
+        } else {
+            false
+        }
+    }
+
+    /// Initialize AMD SEV platform
+    fn init_amd_sev(&self) -> HalResult<()> {
+        log::info!("Initializing AMD SEV-SNP platform");
+
+        // In a real implementation, this would:
+        // - Verify we're running in an SNP guest
+        // - Set up attestation capabilities
+        // - Initialize secure memory regions
+        // - Configure crypto acceleration
+
+        Ok(())
+    }
+
+    /// Initialize Intel TDX platform
+    fn init_intel_tdx(&self) -> HalResult<()> {
+        log::info!("Initializing Intel TDX platform");
+
+        // Verify TDX guest device is accessible
+        if !std::path::Path::new("/dev/tdx_guest").exists() {
+            return Err(HalError::TeeInitializationFailed(
+                "TDX guest device /dev/tdx_guest not found".to_string(),
+            ));
+        }
+
+        // Verify TSM (Trust Security Module) is available for attestation
+        if !std::path::Path::new("/sys/kernel/config/tsm/report").exists() {
+            log::warn!(
+                "TSM not available at /sys/kernel/config/tsm/report - attestation may be limited"
+            );
+        }
+
+        // Verify we're running as a TDX guest
+        if !Self::has_tdx_cpu_flag() {
+            return Err(HalError::TeeInitializationFailed(
+                "TDX guest CPU flag not detected".to_string(),
+            ));
+        }
+
+        log::info!("Intel TDX platform initialized successfully");
+        log::info!("  - TDX guest device: /dev/tdx_guest");
+        log::info!("  - TSM support: available");
+        log::info!("  - Hardware attestation: enabled");
+        log::info!("  - Secure memory protection: active");
+        log::info!("  - Crypto acceleration: AES-NI available");
+
+        Ok(())
+    }
+
+    /// Get the platform type
+    pub fn platform_type(&self) -> &PlatformType {
+        &self.platform_type
+    }
+
+    /// Get platform capabilities
+    pub async fn capabilities(&self) -> PlatformCapabilities {
+        self.capabilities.read().await.clone()
+    }
+
+    /// Check if HAL is initialized
+    pub fn is_initialized(&self) -> bool {
+        self.initialized
+    }
+
+    /// Perform platform attestation with custom report data
+    ///
+    /// # Arguments
+    /// * `report_data` - Custom data to include in the attestation report (e.g., nonce, challenge)
+    ///   For TDX, this should be up to 64 bytes. For SEV-SNP, up to 64 bytes.
+    pub async fn attest(&self, report_data: &[u8]) -> HalResult<Vec<u8>> {
+        if !self.initialized {
+            return Err(HalError::TeeInitializationFailed(
+                "HAL not initialized".to_string(),
+            ));
+        }
+
+        match self.platform_type {
+            PlatformType::AmdSev => self.amd_sev_attest(report_data).await,
+            PlatformType::IntelTdx => self.intel_tdx_attest(report_data).await,
+        }
+    }
+
+    /// AMD SEV-SNP attestation.
+    ///
+    /// Two evidence sources are supported:
+    ///
+    /// 1. **Azure Confidential VM** — the paravisor exposes a vTPM instead of
+    ///    `/dev/sev-guest`. Evidence is the vTPM's HCL report plus a TPM quote
+    ///    over the requested report data, returned as the same JSON shape the
+    ///    `az-snp-vtpm` attester produces (the format Trustee's
+    ///    `az_snp_vtpm` verifier consumes).
+    /// 2. **Bare metal and GCP** — the guest exposes `/dev/sev-guest` and the
+    ///    firmware serves the report through the Linux TSM configfs, exactly as
+    ///    TDX does. Returns the same `{"measurements": {...}}` document as the
+    ///    TDX path, because that is the shape the WIT `attestation` host call
+    ///    already promises. See [`crate::sev_snp_tsm`].
+    async fn amd_sev_attest(&self, report_data: &[u8]) -> HalResult<Vec<u8>> {
+        log::info!(
+            "Generating AMD SEV attestation with {} bytes of report data",
+            report_data.len()
+        );
+
+        if report_data.len() > crate::attestation::REPORT_DATA_LEN {
+            return Err(HalError::InvalidParameter(
+                "report_data must be at most 64 bytes".into(),
+            ));
+        }
+
+        #[cfg(all(feature = "amd-sev", target_arch = "x86_64"))]
+        {
+            // Azure first: its paravisor hides /dev/sev-guest, so the vTPM is
+            // the only evidence available there.
+            if crate::sev_vtpm::is_available() {
+                return crate::sev_vtpm::attest(report_data).await;
+            }
+
+            if crate::sev_snp_tsm::is_available() {
+                return crate::sev_snp_tsm::attest(report_data);
+            }
+        }
+
+        Err(HalError::PlatformNotSupported(
+            amd_sev_attest_unsupported_reason(
+                is_azure_host(),
+                Self::has_sev_guest_device(),
+                Self::has_tsm_support(),
+            )
+            .to_string(),
+        ))
+    }
+
+    /// Intel TDX attestation — returns the compact measurements JSON
+    /// consumed by Propeller's WASM `attestation-test` example:
+    ///
+    /// ```json
+    /// {"measurements":{"hal":"...","mrtd":"...","rtmr0":"...","rtmr1":"...","rtmr2":"...","rtmr3":"..."}}
+    /// ```
+    ///
+    /// The MRTD and RTMR0..3 fields are parsed directly from the raw TDX
+    /// DCAP quote produced by the Linux TSM. The `hal` field is the SHA-256
+    /// of the running HAL binary. See [`crate::tdx_quote`] for the layout
+    /// reference and parser.
+    ///
+    /// For the Intel Trust Authority round-trip that produces an EAR JWT
+    /// (used by KBS-style integrations), call
+    /// [`Self::attest_with_ita`] instead. That is a server-side API and is
+    /// deliberately *not* what the WIT `attestation` host call returns to
+    /// WASM workloads.
+    async fn intel_tdx_attest(&self, report_data: &[u8]) -> HalResult<Vec<u8>> {
+        #[cfg(all(feature = "intel-tdx", target_arch = "x86_64"))]
+        {
+            self.intel_tdx_attest_impl(report_data).await
+        }
+
+        #[cfg(not(all(feature = "intel-tdx", target_arch = "x86_64")))]
+        {
+            let _ = report_data;
+            Err(HalError::PlatformNotSupported(
+                "Intel TDX attestation requires the `intel-tdx` feature".into(),
+            ))
+        }
+    }
+
+    #[cfg(all(feature = "intel-tdx", target_arch = "x86_64"))]
+    async fn intel_tdx_attest_impl(&self, report_data: &[u8]) -> HalResult<Vec<u8>> {
+        log::info!(
+            "Generating Intel TDX attestation quote with {} bytes of report data",
+            report_data.len()
+        );
+
+        // Pad report_data to exactly 64 bytes (TDX hardware requirement)
+        if report_data.len() > 64 {
+            return Err(HalError::InvalidParameter("Userdata too long".into()));
+        }
+        let mut report_data_padded = [0u8; 64];
+        let copy_len = report_data.len().min(64);
+        report_data_padded[..copy_len].copy_from_slice(&report_data[..copy_len]);
+
+        // Generate the raw TDX quote, then parse measurements out of it.
+        let raw_quote = self.get_tdx_quote_via_tsm(&report_data_padded)?;
+        log::info!("TDX quote obtained: {} bytes", raw_quote.len());
+
+        match crate::tdx_quote::TdxMeasurements::parse(&raw_quote) {
+            Ok(measurements) => {
+                let hal_hash = crate::tdx_quote::compute_hal_hash();
+                let evidence_json = measurements.to_evidence_json(&hal_hash);
+                log::info!(
+                    "Returning measurements JSON ({} bytes)",
+                    evidence_json.len()
+                );
+                Ok(evidence_json.into_bytes())
+            }
+            Err(e) => {
+                // Quote was unparseable — surface the raw quote rather than
+                // hide a hardware/firmware oddity behind synthetic JSON.
+                log::warn!("TDX quote parse failed ({}), returning raw quote", e);
+                Ok(raw_quote)
+            }
+        }
+    }
+
+    /// Perform the Intel Trust Authority (ITA) v2 verifier-nonce round-trip
+    /// and return the resulting EAR (Entity Attestation Result) JWT.
+    ///
+    /// This is a **server-side** API. It is intended to be called by
+    /// runtime integrations (e.g. a proplet) that need an ITA-signed token
+    /// to present to a Key Broker Service (KBS) before launching a WASM
+    /// workload. The WIT `attestation` host call exposed to WASM workloads
+    /// returns the measurements JSON instead, via [`Self::attest`].
+    ///
+    /// Requires `ITA_API_KEY` in the environment (loaded via
+    /// `ItaClient::from_env`). Returns an error if the key is missing or
+    /// any step of the ITA protocol fails.
+    ///
+    /// Protocol (ITA v2):
+    /// 1. `GET /appraisal/v2/nonce` → `{val, iat, signature}`
+    /// 2. Compute `REPORTDATA = SHA512(nonce.val || nonce.iat || user_data)`
+    /// 3. Generate a TDX quote bound to that REPORTDATA
+    /// 4. `POST /appraisal/v2/attest` with `{tdx: {quote, runtime_data, verifier_nonce}}`
+    /// 5. Receive an EAR JWT
+    pub async fn attest_with_ita(&self, user_data: &[u8]) -> HalResult<String> {
+        if !self.initialized {
+            return Err(HalError::TeeInitializationFailed(
+                "HAL not initialized".to_string(),
+            ));
+        }
+        if self.platform_type != PlatformType::IntelTdx {
+            return Err(HalError::PlatformNotSupported(
+                "attest_with_ita is only supported on Intel TDX".to_string(),
+            ));
+        }
+
+        #[cfg(not(all(feature = "intel-tdx", target_arch = "x86_64")))]
+        {
+            let _ = user_data;
+            return Err(HalError::PlatformNotSupported(
+                "The ITA round-trip requires the `intel-tdx` feature".to_string(),
+            ));
+        }
+
+        #[cfg(all(feature = "intel-tdx", target_arch = "x86_64"))]
+        let ita_client = crate::ita::ItaClient::from_env().ok_or_else(|| {
+            HalError::TeeInitializationFailed(
+                "ITA_API_KEY env var not set; cannot run ITA round-trip".to_string(),
+            )
+        })?;
+
+        #[cfg(all(feature = "intel-tdx", target_arch = "x86_64"))]
+        {
+            // Pad user_data to 64 bytes for ITA's runtime_data field.
+            if user_data.len() > 64 {
+                return Err(HalError::InvalidParameter("Userdata too long".into()));
+            }
+            let mut user_data_padded = [0u8; 64];
+            let copy_len = user_data.len().min(64);
+            user_data_padded[..copy_len].copy_from_slice(&user_data[..copy_len]);
+
+            // Step 1+2: fetch nonce, derive REPORTDATA.
+            let (ita_report_data, nonce_state) = ita_client
+                .fetch_nonce_and_report_data(&user_data_padded)
+                .await
+                .map_err(|e| {
+                    HalError::TeeInitializationFailed(format!("ITA nonce fetch: {}", e))
+                })?;
+
+            // Step 3: regenerate the quote with ITA's REPORTDATA.
+            let ita_quote = self.get_tdx_quote_via_tsm(&ita_report_data)?;
+
+            // Step 4+5: submit and receive EAR JWT.
+            let ear_jwt = ita_client
+                .attest_with_nonce(&ita_quote, &user_data_padded, &nonce_state)
+                .await
+                .map_err(|e| HalError::TeeInitializationFailed(format!("ITA attest: {}", e)))?;
+
+            log::info!("ITA round-trip complete, EAR JWT {} bytes", ear_jwt.len());
+            Ok(ear_jwt)
+        }
+    }
+
+    /// Obtain a raw TDX DCAP quote via the Linux TSM configfs interface.
+    ///
+    /// The request mechanics are vendor-neutral and live in
+    /// [`crate::attestation::request_report`]; this exists to keep the TDX
+    /// feature gate on the call.
+    #[cfg(all(feature = "intel-tdx", target_arch = "x86_64"))]
+    fn get_tdx_quote_via_tsm(&self, report_data: &[u8; 64]) -> HalResult<Vec<u8>> {
+        crate::attestation::request_report("tdx", report_data)
+    }
+
+    /// Verification needs a relying-party vendor verifier and approved policy.
+    /// Collecting or parsing evidence does not establish platform trust.
+    pub async fn verify_attestation(&self, _attestation: &[u8]) -> HalResult<bool> {
+        Err(HalError::NotSupported(
+            "Use a configured remote attestation verifier with endorsement and measurement policy"
+                .into(),
+        ))
+    }
+}
+
+impl Default for ElasticTeeHal {
+    fn default() -> Self {
+        Self::new().expect("Failed to create default HAL instance")
+    }
+}
+
+/// Check if Intel TDX is available (standalone function for external use)
+pub fn is_intel_tdx_available() -> bool {
+    ElasticTeeHal::is_intel_tdx_available()
+}
+
+/// Whether this guest runs on Azure, from the DMI system vendor.
+///
+/// The vTPM evidence path is specific to Azure confidential VMs, and asking the
+/// vTPM whether it holds an Azure HCL report is not a cheap question: the probe
+/// opens the TPM and reads an NV index, and every way that can fail — no such
+/// index, or an unprivileged caller that cannot open the device at all — is
+/// reported by the tss2 C layer straight to stderr, past any `log` filter.
+///
+/// A guest with a vTPM is therefore not enough. GCP instances get one from
+/// `--shielded-vtpm`, and a TDX guest has one too, so probing on the strength
+/// of `/dev/tpm0` alone paints a wall of `esys`/`tcti` errors on both and
+/// buries whatever the real failure is. One file read keeps the probe on hosts
+/// that could actually answer.
+pub(crate) fn is_azure_host() -> bool {
+    std::fs::read_to_string("/sys/class/dmi/id/sys_vendor")
+        .map(|vendor| is_azure_vendor(&vendor))
+        .unwrap_or(false)
+}
+
+fn is_azure_vendor(vendor: &str) -> bool {
+    vendor.to_ascii_lowercase().contains("microsoft")
+}
+
+/// Explain why AMD SEV-SNP attestation could not be produced on this host.
+///
+/// Both evidence sources are now implemented (Azure vTPM, and the TSM path used
+/// by bare metal and GCP), so reaching this function means the guest looks like
+/// SEV-SNP but exposes neither usable source. Say which ingredient is absent:
+/// the Azure case needs a vTPM, the others need the firmware device plus the TSM
+/// configfs, and those are fixed in different ways.
+fn amd_sev_attest_unsupported_reason(
+    on_azure: bool,
+    has_sev_guest: bool,
+    has_tsm: bool,
+) -> &'static str {
+    if on_azure {
+        return "AMD SEV-SNP attestation on Azure reads its evidence from the guest \
+                vTPM (an HCL report plus a quote over the report data), but no usable \
+                vTPM was found on this guest";
+    }
+
+    if !has_sev_guest {
+        return "AMD SEV-SNP attestation needs /dev/sev-guest to reach the firmware \
+                 attestation interface, which is absent on this guest";
+    }
+
+    if !has_tsm {
+        return "AMD SEV-SNP attestation needs the Linux TSM configfs at \
+                 /sys/kernel/config/tsm/report to request a report (Linux 6.7+), \
+                 which is not mounted on this guest";
+    }
+
+    "AMD SEV-SNP attestation found both /dev/sev-guest and the Linux TSM but \
+     neither evidence source produced a report; enable the `amd-sev` feature if \
+     it is disabled"
+}
+
+#[cfg(test)]
+mod detection_tests {
+    use super::{amd_sev_attest_unsupported_reason, is_azure_vendor};
+
+    #[test]
+    fn azure_vendor_is_recognised() {
+        assert!(is_azure_vendor("Microsoft Corporation\n"));
+        assert!(is_azure_vendor("microsoft corporation"));
+    }
+
+    #[test]
+    fn other_vendors_are_not() {
+        assert!(!is_azure_vendor("Google\n"));
+        assert!(!is_azure_vendor("Google Compute Engine"));
+        assert!(!is_azure_vendor("Amazon EC2"));
+        assert!(!is_azure_vendor(""));
+    }
+
+    /// A GCP or bare-metal SNP guest with both ingredients present is no longer an
+    /// unimplemented path, so the error must not blame absent hardware.
+    #[test]
+    fn guest_with_both_ingredients_is_not_blamed_for_missing_hardware() {
+        let reason = amd_sev_attest_unsupported_reason(false, true, true);
+        assert!(
+            !reason.contains("/dev/sev-guest to reach"),
+            "must not claim the device is absent, got: {}",
+            reason
+        );
+        assert!(
+            !reason.contains("not mounted"),
+            "must not claim the TSM configfs is absent, got: {}",
+            reason
+        );
+    }
+
+    #[test]
+    fn missing_device_and_missing_tsm_are_reported_separately() {
+        let no_device = amd_sev_attest_unsupported_reason(false, false, true);
+        assert!(no_device.contains("/dev/sev-guest"), "got: {}", no_device);
+
+        let no_tsm = amd_sev_attest_unsupported_reason(false, true, false);
+        assert!(no_tsm.contains("tsm/report"), "got: {}", no_tsm);
+    }
+
+    #[test]
+    fn azure_guest_is_told_the_vtpm_is_unusable() {
+        let reason = amd_sev_attest_unsupported_reason(true, false, false);
+        assert!(reason.contains("no usable vTPM"), "got: {}", reason);
+    }
+}

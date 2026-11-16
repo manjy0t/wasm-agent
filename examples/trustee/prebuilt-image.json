@@ -1,0 +1,16 @@
+{
+  "release": "0.22.0",
+  "source_commit": "512fed65642015b849f38fb13bfdec7806639987",
+  "repository": "ghcr.io/confidential-containers/staged-images/coco-as-restful",
+  "resolved_commit_tag": "512fed65642015b849f38fb13bfdec7806639987",
+  "checked_date": "2026-11-09",
+  "platform": "linux/amd64",
+  "index_digest": "sha256:7576d62a2b7821d07339ce3d449d311dff94828fe92c80b554af14746d677e68",
+  "manifest_digest": "sha256:179b0acfeef63af6c5dc1ed7daf0e6b1cba40b86a65fb4ab433862d2cd203b10",
+  "config_digest": "sha256:819fbbe1f9bf61a98c72cef0da7802ce6d6e09f0c80a4cb1b65dc8de72433a83",
+  "compressed_layer_bytes": 145473279,
+  "verifier_build_argument_in_config_history": "all-verifier",
+  "verification": "Read the public upstream commit-tag index over HTTPS, selected linux/amd64, and verified manifest and config SHA-256 values against their content. This is registry metadata verification, not a live attestation test or an independent signature verification.",
+  "release_url": "https://github.com/confidential-containers/trustee/releases/tag/v0.22.0",
+  "image_documentation": "https://github.com/confidential-containers/trustee/blob/v0.22.0/attestation-service/docs/restful-as.md"
+}
